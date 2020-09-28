@@ -10,6 +10,10 @@ using System.IO;
 using System.Diagnostics;
 using iEsepte.MachineLearningNoticeProperty.Model;
 using Microsoft.ML;
+using iEsepte.Models;
+using System.Net.Http;
+using System.Text.Json;
+
 
 namespace iEsepte
 {
@@ -20,58 +24,52 @@ namespace iEsepte
         static void Main(string[] args)
         {
             Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n");
-
             DataOfProgram app = new DataOfProgram();
-            
-            app.InitializeIntellectMachine();
 
+            // path and files
             Console.Write("\n\nУкажите путь к директории: ");
             app.selectedFolderPath = Console.ReadLine();
+
+            if (!Directory.Exists(app.selectedFolderPath))
+            {
+
+                // close
+                Console.Write("\nПуть не найдено. Запустите программу заново");
+                Console.Write("\n\nЗавершение работы программы...");
+                Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
+                Console.WriteLine("\n\n");
+                Console.ReadKey();
+
+                return;
+            }
+
             app.InitializeArrayWithFilesPaths();
             Console.WriteLine("Изображений: " + app.filesPaths.Length);
             Console.WriteLine("\n");
 
-            Console.WriteLine("Функции:");
-            Console.WriteLine("1) Удаление");
-            Console.WriteLine("\n");
-            Console.Write("Введите номер или название функции: ");
-            string function = Console.ReadLine();
-            app.SetFunctionType(function);
-            
-            Console.WriteLine("Выбрана функция: " + app.functionTypeNum + ". " + app.functionTypeName);
-            //Console.WriteLine("\n");
-            //Console.Write("Подтвердите(да/нет): ");
-
-            //string confirm = Console.ReadLine();
-            //if (confirm.Contains("нет"))
-            //{
-            //    Console.Write("\n\nЗавершение работы программы...");
-            //    Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
-
-            //    return;
-            //}
-
+            // classes
             Console.WriteLine("\n\n");
             Console.WriteLine("Классы фотографий:");
             Console.WriteLine(app.GetClasses());
             Console.WriteLine("\n");
-            Console.Write("Введите номер или название класса для " + app.functionTypeName + ": ");
+            Console.Write("Введите номер или название класса: ");
             string classInput = Console.ReadLine();
             app.SetClassType(classInput);
-
             Console.WriteLine("Выбран класс: " + app.classTypeNum + ". " + app.classTypeName);
-            //Console.WriteLine("\n");
-            //Console.Write("Подтвердите(да/нет): ");
 
-            //confirm = Console.ReadLine();
-            //if (confirm.Contains("нет"))
-            //{
-            //    Console.Write("\n\nЗавершение работы программы...");
-            //    Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
+            if (app.classTypeNum == -1)
+            {
+                // close
+                Console.Write("\nКласс не выбрано. Запустите программу заново");
+                Console.Write("\n\nЗавершение работы программы...");
+                Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
+                Console.WriteLine("\n\n");
+                Console.ReadKey();
 
-            //    return;
-            //}
-            
+                return;
+            }
+
+            // starting
             Console.WriteLine("\n");
             Console.WriteLine("Классификация...");
             string startDateTime = DateTime.Now.ToString("Время начала: HH:mm:ss");
@@ -81,10 +79,10 @@ namespace iEsepte
             int i = 0;
             foreach (string filePath in app.filesPaths)
             {
+                // recognize and writeline
                 i += 1;
                 string imageName = Path.GetFileName(filePath);
                 string label = app.Recognize(filePath);
-
                 string row = i + ")\t" + app.GetTypeRU(label);
                 
                 if (app.GetTypeRU(label) == "спам" || app.GetTypeRU(label) == "логотип" || app.GetTypeRU(label) == "спам АН")
@@ -94,62 +92,37 @@ namespace iEsepte
                 {
                     row += "\t\t" + imageName;
                 }
-
                 Console.WriteLine(row);
 
                 if (app.GetTypeRU(label) == app.classTypeName)
                 {
                     app.WriteRow(filePath);
-                    app.CopyToBackupFolder(filePath);
-                    app.AddRecognized(filePath, label);
+                    //app.AddRecognized(filePath, label);
+                    app.Count++;
                 }
             }
+
+            // result
             Console.WriteLine("\n");
-            Console.Write("\t" + app.imageTypes.Count + " изображений класса \"" + app.classTypeName + "\"");
+            Console.Write("\t" + app.Count + " изображений класса \"" + app.classTypeName + "\"");
 
-            Process.Start("explorer.exe", app.backupFolderPath);
-
+            // finish
             Console.WriteLine("\n");
             Console.WriteLine(startDateTime);
             string endDateTime = DateTime.Now.ToString("Время завершения: HH:mm:ss");
             Console.WriteLine(endDateTime);
-            //Console.WriteLine("\n\n");
-            //Console.WriteLine("Внимание: Для отмены удаления файла, - в названии файла включите текст \"_backup_\"");
+            
+            // show
+            Console.WriteLine("\n");
+            Console.WriteLine("Файл BackupFile.txt содержить пути изображениям класса \"" + app.classTypeName + "\"");
+            Console.WriteLine("\n");
 
-            Console.Write("Подтвердите выполнить " + app.functionTypeName + " (да/нет): ");
-
-            string confirm = Console.ReadLine();
-            if (confirm.Contains("нет"))
-            {
-                Console.Write("\n\nЗавершение работы программы...");
-                Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
-
-                return;
-            }
-
-
-            Console.Write("\nВыполнение функции " + app.functionTypeName + "...");
-
-            if (app.functionTypeNum == 1)
-            {
-                int n = 0;
-                foreach (var image in app.imageTypes)
-                {
-                    n++;
-                    File.Delete(image.ImagePath);
-                }
-                Console.WriteLine("Удалено " + n + " изображений");
-            }
-
-
+            // close
             Console.Write("\n\nЗавершение работы программы...");
             Console.WriteLine("\niEsepte. (c) Esepte 2020. http://esepte.com/iEsepte\n\n");
             Console.WriteLine("\n\n");
-
+            Console.ReadKey();
         }
-
-
-
     }
 
     class DataOfProgram
@@ -158,46 +131,36 @@ namespace iEsepte
 
         public string[] filesPaths = { "" };
 
-        public List<ImageRecognized> imageTypes = new List<ImageRecognized>();
-
-        public int functionTypeNum = -1;
-        public string functionTypeName = "Не выбрано";
-
         public int classTypeNum = -1;
         public string classTypeName = "-";
 
-        public string backupFolderPath = "BackupFolder";
         public string backupFilePath = "BackupFile.txt";
+        
+        public int Count = 0;
 
+        //private static readonly HttpClient client = new HttpClient();
+        //private static readonly string appUrl = "https://localhost:44332";
+        //private static readonly string apiUrl = "https://localhost:44370/noticeproperty";
 
-        public void DeleteFiles()
-        {
-            int n = 0;
-            foreach (var image in imageTypes)
-            {
-                n++;
-                File.Delete(image.ImagePath);
-            }
-            Console.WriteLine("Удалено " + n + " изображений");
-        }
+        //private Model RequestToEsepteAPI(Model model)
+        //{
+        //    var response =  client.GetAsync(apiUrl + "?imageLink=" + model.ImageLink);
 
-        public void ExecuteFunction()
-        {
-            if (functionTypeNum == 1)
-            {
-                DeleteFiles();
-            }
-        }
+        //    var responseString =  response.Result.Content.ReadAsStringAsync();
 
-        public void CopyToBackupFolder(string filePath)
-        {
-            try
-            {
-                File.Copy(filePath, backupFolderPath + "/" + Path.GetFileName(filePath));
-            } catch
-            {
-            }
-        }
+        //    ModelJSON jsonResult = JsonSerializer.Deserialize<ModelJSON>(responseString.Result);
+        //    model.TypeRU = jsonResult.typeRU;
+
+        //    Debug.Print("EsepteSite: " + model.TypeRU);
+        //    return model;
+        //}
+
+        //public string RequestRecognize(string imagePath)
+        //{
+        //    var result = RequestToEsepteAPI(new Model { ImagePath = imagePath, ImageLink = appUrl + "" });
+            
+        //    return result.TypeRU;
+        //}
 
         public void WriteRow(string row)
         {
@@ -255,31 +218,6 @@ namespace iEsepte
             string result = " 1) 2d планировака\n 2) 3d планировака\n 3) логотип\n 4) спам АН\n";
             result += " 5) документ\n 6) карта\n 7) спам\n 8) реальное";
             return result;
-        }
-
-        public void SetFunctionType(string inputLine)
-        {
-            if (inputLine == "1" || inputLine.Contains("Удаление"))
-            {
-                functionTypeNum = 1;
-                functionTypeName = "Удаление";
-            }
-            //if (inputLine == "2" || inputLine.Contains("Копирование"))
-            //{
-            //    functionTypeNum = 2;
-            //    functionTypeName = "Копирование";
-            //}
-            //if (inputLine == "3" || inputLine.Contains("Перемещение"))
-            //{
-            //    functionTypeNum = 3;
-            //    functionTypeName = "Перемещение";
-            //}
-
-        }
-
-        public void AddRecognized(string imageName, string imageType)
-        {
-            imageTypes.Add(new ImageRecognized(imageName, imageType));
         }
 
         public void InitializeArrayWithFilesPaths()
@@ -362,32 +300,19 @@ namespace iEsepte
 
         public DataOfProgram()
         {
-            //ClearBackupFolderAndFile();
+            InitializeIntellectMachine();
+            ClearBackupFile();
         }
 
-        public void ClearBackupFolderAndFile()
+        public void ClearBackupFile()
         {
-            foreach (var file in Directory.GetFiles(backupFolderPath))
-            {
-                File.Delete(file);
-            }
-
             using (StreamWriter sw = new StreamWriter(backupFilePath, false, Encoding.UTF8))
             {
                 sw.Write("");
             }
         }
-    }
 
-    public class ImageRecognized
-    {
-        public string ImagePath { get; set; }
-        public string ImageType { get; set; }
 
-        public ImageRecognized(string imagePath, string imageType)
-        {
-            this.ImagePath = imagePath;
-            this.ImageType = imageType;
-        }
+
     }
 }

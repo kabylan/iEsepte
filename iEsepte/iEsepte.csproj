@@ -5,9 +5,11 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ILMerge" Version="3.0.41" />
     <PackageReference Include="Microsoft.ML" Version="1.5.2" />
     <PackageReference Include="Microsoft.ML.ImageAnalytics" Version="1.5.2" />
     <PackageReference Include="Microsoft.ML.Vision" Version="1.5.2" />
+    <PackageReference Include="MSBuild.ILMerge.Task" Version="1.1.3" />
     <PackageReference Include="SciSharp.TensorFlow.Redist" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>
@@ -24,5 +26,20 @@
   <ItemGroup>
     <Folder Include="BackupFolder\" />
   </ItemGroup>
-
+  
+  <!-- Code to merge the assemblies into one:setup.exe -->
+  <UsingTask TaskName="ILMerge.MSBuild.Tasks.ILMerge" AssemblyFile="$(SolutionDir)\packages\ILMerge.MSBuild.Tasks.1.0.0.3\tools\ILMerge.MSBuild.Tasks.dll" />
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <MergeAsm Include="$(OutputPath)$(TargetFileName)" />
+      <MergeAsm Include="$(OutputPath)LIB1_To_MERGE.dll" />
+      <MergeAsm Include="$(OutputPath)LIB2_To_MERGE.dll" />
+    </ItemGroup>
+    <PropertyGroup>
+      <MergedAssembly>$(ProjectDir)$(OutDir)MERGED_ASSEMBLY_NAME.exe</MergedAssembly>
+    </PropertyGroup>
+    <Message Text="ILMerge @(MergeAsm) -&gt; $(MergedAssembly)" Importance="high" />
+    <ILMerge InputAssemblies="@(MergeAsm)" OutputFile="$(MergedAssembly)" TargetKind="SameAsPrimaryAssembly" />
+  </Target>
+  
 </Project>
